@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <errno.h>
 #include <err.h>
 #include <limits.h>
 #include <stdio.h>
@@ -88,6 +89,18 @@ main(int argc, char *argv[])
 	if (bind(s, (struct sockaddr *)&sin6, sizeof(sin6)) == -1)
 		err(1, "bind ::1");
 
+	if (ckoff) {
+		if (setsockopt(s, IPPROTO_IPV6, IPV6_CHECKSUM, &ckoff,
+		     sizeof(ckoff)) == -1) {
+			if (!eflag)
+				err(1, "setsockopt ckoff");
+		} else {
+			if (eflag) {
+				errno = 0;
+				err(1, "setsockopt ckoff");
+			}
+		}
+	}
 
 	return 0;
 }
