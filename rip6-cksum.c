@@ -25,6 +25,7 @@
 
 #include <netinet/in.h>
 
+#include <sys/select.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -33,11 +34,11 @@ void __dead usage(void);
 void __dead
 usage(void)
 {
-	fprintf(stderr, "rip6-cksum [-es] [-c ckoff] [-w wait]\n"
+	fprintf(stderr, "rip6-cksum [-es] [-c ckoff] [-w waitpkt]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
-	    "    -s         send packet on socket\n"
-	    "    -w wait    wait for packet on socket, timeout in seconds\n"
+	    "    -s sendsz  send packet of given size on socket\n"
+	    "    -w waitpkt wait for packet on socket, timeout in seconds\n"
 	);
 	exit(1);
 }
@@ -46,11 +47,13 @@ const struct in6_addr loop6 = IN6ADDR_LOOPBACK_INIT;
 int
 main(int argc, char *argv[])
 {
-	int s, ch, eflag, ckoff, sflag, wait;
+	int s, ch, eflag, ckoff, waitpkt;
+	size_t sendsz;
 	const char *errstr;
 	struct sockaddr_in6 sin6;
 
-	eflag = ckoff = sflag = wait = 0;
+	eflag = ckoff = waitpkt = 0;
+	sendsz = 0;
 	while ((ch = getopt(argc, argv, "c:esw:")) != -1) {
 		switch (ch) {
 		case 'c':
@@ -62,12 +65,14 @@ main(int argc, char *argv[])
 			eflag = 1;
 			break;
 		case 's':
-			sflag = 1;
+			sendsz = strtonum(optarg, 0, SIZE_T_MAX, &errstr);
+			if (errstr != NULL)
+				errx(1, "sendsz is %s: %s", errstr, optarg);
 			break;
 		case 'w':
-			wait = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
+			waitpkt = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
 			if (errstr != NULL)
-				errx(1, "wait is %s: %s", errstr, optarg);
+				errx(1, "waitpkt is %s: %s", errstr, optarg);
 			break;
 		default:
 			usage();
@@ -100,6 +105,33 @@ main(int argc, char *argv[])
 				err(1, "setsockopt ckoff");
 			}
 		}
+	}
+
+	if (waitpkt) {
+		fd_set fds;
+		struct timeval to;
+
+		FD_ZERO(&fds);
+		FD_SET(s, &fds);
+		to.tv_sec = waitpkt;
+		to.tv_usec = 0;
+		switch (select(s, &fds, NULL, NULL, &to)) {
+		case -1:
+			err(1, "select");
+		case 0:
+			errx(1, "timeout");
+		}
+	}
+
+	if (sendsz) {
+		char *buf;
+
+		buf = malloc(sendsz);
+		if (buf == NULL)
+			err(1, "malloc sendsz");
+		memset(buf, 0, sendsz);
+		if (send(s, buf, sendsz, 0) == -1)
+			err(1, "send");
 	}
 
 	return 0;
