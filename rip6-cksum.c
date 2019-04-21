@@ -137,8 +137,10 @@ main(int argc, char *argv[])
 
 	if (wflag) {
 		int n;
+		ssize_t recvsz;
 		fd_set fds;
 		struct timeval to;
+		char buf[1<<16];
 
 		FD_ZERO(&fds);
 		FD_SET(s, &fds);
@@ -154,6 +156,11 @@ main(int argc, char *argv[])
 		default:
 			printf("selected %d\n", n);
 		}
+		printf("recv packet\n");
+		recvsz = recv(s, buf, sizeof(buf), 0);
+		if (recvsz == -1)
+			err(1, "recv");
+		printf("received packet size %zd\n", recvsz);
 	}
 
 	if (sflag) {
