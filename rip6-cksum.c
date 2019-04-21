@@ -47,32 +47,36 @@ const struct in6_addr loop6 = IN6ADDR_LOOPBACK_INIT;
 int
 main(int argc, char *argv[])
 {
-	int s, ch, eflag, ckoff, waitpkt;
+	int s, ch, eflag, cflag, sflag, wflag;
+	int ckoff;
 	size_t sendsz;
+	time_t waitpkt;
 	const char *errstr;
 	struct sockaddr_in6 sin6;
 
-	eflag = ckoff = waitpkt = 0;
-	sendsz = 0;
-	while ((ch = getopt(argc, argv, "c:esw:")) != -1) {
+	eflag = cflag = sflag = wflag = 0;
+	while ((ch = getopt(argc, argv, "c:es:w:")) != -1) {
 		switch (ch) {
 		case 'c':
 			ckoff = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
 			if (errstr != NULL)
 				errx(1, "ckoff is %s: %s", errstr, optarg);
+			cflag = 1;
 			break;
 		case 'e':
 			eflag = 1;
 			break;
 		case 's':
-			sendsz = strtonum(optarg, 0, SIZE_T_MAX, &errstr);
+			sendsz = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL)
 				errx(1, "sendsz is %s: %s", errstr, optarg);
+			sflag = 1;
 			break;
 		case 'w':
-			waitpkt = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
+			waitpkt = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL)
 				errx(1, "waitpkt is %s: %s", errstr, optarg);
+			wflag = 1;
 			break;
 		default:
 			usage();
@@ -81,7 +85,7 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 	if (argc) {
-		fprintf(stderr, "too many arguments\n");
+		fprintf(stderr, "%s: too many arguments\n", getprogname());
 		usage();
 	}
 
@@ -93,8 +97,10 @@ main(int argc, char *argv[])
 	sin6.sin6_addr = loop6;
 	if (bind(s, (struct sockaddr *)&sin6, sizeof(sin6)) == -1)
 		err(1, "bind ::1");
+	if (connect(s, (struct sockaddr *)&sin6, sizeof(sin6)) == -1)
+		err(1, "connect ::1");
 
-	if (ckoff) {
+	if (cflag) {
 		if (setsockopt(s, IPPROTO_IPV6, IPV6_CHECKSUM, &ckoff,
 		     sizeof(ckoff)) == -1) {
 			if (!eflag)
@@ -107,7 +113,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (waitpkt) {
+	if (wflag) {
 		fd_set fds;
 		struct timeval to;
 
@@ -115,7 +121,7 @@ main(int argc, char *argv[])
 		FD_SET(s, &fds);
 		to.tv_sec = waitpkt;
 		to.tv_usec = 0;
-		switch (select(s, &fds, NULL, NULL, &to)) {
+		switch (select(s + 1, &fds, NULL, NULL, &to)) {
 		case -1:
 			err(1, "select");
 		case 0:
@@ -123,7 +129,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (sendsz) {
+	if (sflag) {
 		char *buf;
 
 		buf = malloc(sendsz);
@@ -132,6 +138,7 @@ main(int argc, char *argv[])
 		memset(buf, 0, sendsz);
 		if (send(s, buf, sendsz, 0) == -1)
 			err(1, "send");
+		free(buf);
 	}
 
 	return 0;
