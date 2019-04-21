@@ -5,15 +5,23 @@ from scapy.all import *
 from struct import pack
 import getopt, sys
 
-opts, args = getopt.getopt(sys.argv[1:], "c:s:")
+def usage():
+	print "raw6-sendrecv [-h] [-c ckoff] [-s sendsz]"
+	print "    -c ckoff   set checksum offset within payload"
+	print "    -s sendsz  set payload size"
+	exit(1)
+
+opts, args = getopt.getopt(sys.argv[1:], "c:hs:")
 
 ip = IPv6(src="::1", dst="::1", nh=255)
 
 for o, a in opts:
 	if o == "-c":
 		ckoff = int(a)
-	if o == "-s":
+	elif o == "-s":
 		sendsz = int(a)
+	else:
+		usage()
 
 payload = "";
 if sendsz is not None:

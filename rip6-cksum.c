@@ -34,7 +34,7 @@ void __dead usage(void);
 void __dead
 usage(void)
 {
-	fprintf(stderr, "rip6-cksum [-es] [-c ckoff] [-w waitpkt] "
+	fprintf(stderr, "rip6-cksum [-eh] [-c ckoff] [-s sendsz] [-w waitpkt] "
 	    "[-- scapy ...]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
@@ -60,7 +60,7 @@ main(int argc, char *argv[])
 		err(1, "setvbuf stdout line buffered");
 
 	eflag = cflag = sflag = wflag = 0;
-	while ((ch = getopt(argc, argv, "c:es:w:")) != -1) {
+	while ((ch = getopt(argc, argv, "c:ehs:w:")) != -1) {
 		switch (ch) {
 		case 'c':
 			ckoff = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
