@@ -8,9 +8,9 @@ import getopt, sys
 
 def usage():
 	print "raw6-sendrecv [-hi] [-c ckoff] [-s sendsz]"
+	print "    -c ckoff   set checksum offset within payload"
 	print "    -h         help, show usage"
 	print "    -i         expect icmp6 error message as response"
-	print "    -c ckoff   set checksum offset within payload"
 	print "    -s sendsz  set payload size"
 	exit(1)
 
@@ -24,7 +24,7 @@ sendsz = None
 for o, a in opts:
 	if o == "-c":
 		ckoff = int(a)
-	if o == "-i":
+	elif o == "-i":
 		icmp = True
 	elif o == "-s":
 		sendsz = int(a)
