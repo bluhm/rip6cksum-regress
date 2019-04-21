@@ -38,6 +38,7 @@ usage(void)
 	    "[-- scapy ...]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
+	    "    -h         help, show usage\n"
 	    "    -s sendsz  send packet of given size on socket\n"
 	    "    -w         wait for packet on socket, timeout 10 seconds\n"
 	    "    scapy ...  run scapy program after socket setup\n"

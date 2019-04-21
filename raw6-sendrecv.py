@@ -1,4 +1,5 @@
 #!/usr/local/bin/python2.7
+# $OpenBSD$
 
 import os
 from scapy.all import *
@@ -6,20 +7,25 @@ from struct import pack
 import getopt, sys
 
 def usage():
-	print "raw6-sendrecv [-h] [-c ckoff] [-s sendsz]"
+	print "raw6-sendrecv [-hi] [-c ckoff] [-s sendsz]"
+	print "    -h         help, show usage"
+	print "    -i         expect icmp6 error message as response"
 	print "    -c ckoff   set checksum offset within payload"
 	print "    -s sendsz  set payload size"
 	exit(1)
 
-opts, args = getopt.getopt(sys.argv[1:], "c:hs:")
+opts, args = getopt.getopt(sys.argv[1:], "c:his:")
 
 ip = IPv6(src="::1", dst="::1", nh=255)
 
 ckoff = None
+icmp = False
 sendsz = None
 for o, a in opts:
 	if o == "-c":
 		ckoff = int(a)
+	if o == "-i":
+		icmp = True
 	elif o == "-s":
 		sendsz = int(a)
 	else:
@@ -46,7 +52,20 @@ print ans
 res=ans[0][1][1]
 res.show()
 
+print "response protocol next header is", res.nh
+if icmp:
+	if res.nh != 58:
+		print "response wrong protocol, expected icmp6"
+		exit(1)
+	print "response icmp6 type is", res.payload.type
+	if res.payload.type != 4:
+		print "response wrong icmp6 type, expected parameter problem"
+		exit(1)
+	exit(0)
 
+if res.nh != 255:
+	print "response with wrong protocol, expected 255, got"
+	exit(1)
 
 cksum = in6_chksum(255, res, res.payload.load)
 print "received checksum is", cksum
