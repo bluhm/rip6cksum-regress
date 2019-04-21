@@ -26,19 +26,21 @@
 #include <netinet/in.h>
 
 #include <sys/select.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 void __dead usage(void);
 
 void __dead
 usage(void)
 {
-	fprintf(stderr, "rip6-cksum [-es] [-c ckoff] [-w waitpkt]\n"
+	fprintf(stderr, "rip6-cksum [-es] [-c ckoff] [-w waitpkt] "
+	    "[-- scapy ...]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
 	    "    -s sendsz  send packet of given size on socket\n"
 	    "    -w waitpkt wait for packet on socket, timeout in seconds\n"
+	    "    scapy ...  run scapy program after socket setup\n"
 	);
 	exit(1);
 }
@@ -53,6 +55,9 @@ main(int argc, char *argv[])
 	time_t waitpkt;
 	const char *errstr;
 	struct sockaddr_in6 sin6;
+
+	if (setvbuf(stdout, NULL, _IOLBF, 0) != 0)
+		err(1, "setvbuf stdout line buffered");
 
 	eflag = cflag = sflag = wflag = 0;
 	while ((ch = getopt(argc, argv, "c:es:w:")) != -1) {
@@ -84,27 +89,28 @@ main(int argc, char *argv[])
 	}
 	argc -= optind;
 	argv += optind;
-	if (argc) {
-		fprintf(stderr, "%s: too many arguments\n", getprogname());
-		usage();
-	}
 
+	printf("socket inet6 raw 255\n");
 	s = socket(AF_INET6, SOCK_RAW, 255);
 	if (s == -1)
 		err(1, "socket raw");
 	memset(&sin6, 0, sizeof(sin6));
 	sin6.sin6_family = AF_INET6;
 	sin6.sin6_addr = loop6;
+	printf("bind ::1\n");
 	if (bind(s, (struct sockaddr *)&sin6, sizeof(sin6)) == -1)
 		err(1, "bind ::1");
+	printf("connect ::1\n");
 	if (connect(s, (struct sockaddr *)&sin6, sizeof(sin6)) == -1)
 		err(1, "connect ::1");
 
 	if (cflag) {
+		printf("setsockopt ipv6 checksum %d\n", ckoff);
 		if (setsockopt(s, IPPROTO_IPV6, IPV6_CHECKSUM, &ckoff,
 		     sizeof(ckoff)) == -1) {
 			if (!eflag)
 				err(1, "setsockopt ckoff");
+			printf("setsockopt failed %s\n", strerror(errno));
 		} else {
 			if (eflag) {
 				errno = 0;
@@ -113,7 +119,24 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (argc) {
+		pid_t pid;
+
+		printf("fork child process\n");
+		pid = fork();
+		if (pid == -1)
+			err(1, "fork");
+		if (pid == 0) {
+			/* child */
+			printf("execute %s\n", argv[0]);
+			execvp(argv[0], argv);
+			err(1, "execvp %s", argv[0]);
+		}
+		printf("child pid %d\n", pid);
+	}
+
 	if (wflag) {
+		int n;
 		fd_set fds;
 		struct timeval to;
 
@@ -121,11 +144,15 @@ main(int argc, char *argv[])
 		FD_SET(s, &fds);
 		to.tv_sec = waitpkt;
 		to.tv_usec = 0;
-		switch (select(s + 1, &fds, NULL, NULL, &to)) {
+		printf("select socket read\n");
+		n = select(s + 1, &fds, NULL, NULL, &to);
+		switch(n) {
 		case -1:
 			err(1, "select");
 		case 0:
 			errx(1, "timeout");
+		default:
+			printf("selected %d\n", n);
 		}
 	}
 
@@ -136,9 +163,21 @@ main(int argc, char *argv[])
 		if (buf == NULL)
 			err(1, "malloc sendsz");
 		memset(buf, 0, sendsz);
+		printf("send packet size %zu\n", sendsz);
 		if (send(s, buf, sendsz, 0) == -1)
 			err(1, "send");
 		free(buf);
+	}
+
+	if (argc) {
+		int status;
+
+		printf("wait for child\n");
+		if (wait(&status) == -1)
+			err(1, "wait");
+		if (status != 0)
+			errx(1, "child program %s status %d", argv[0], status);
+		printf("child program %s status %d\n", argv[0], status);
 	}
 
 	return 0;
