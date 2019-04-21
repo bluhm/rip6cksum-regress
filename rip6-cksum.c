@@ -34,12 +34,12 @@ void __dead usage(void);
 void __dead
 usage(void)
 {
-	fprintf(stderr, "rip6-cksum [-eh] [-c ckoff] [-s sendsz] [-w waitpkt] "
+	fprintf(stderr, "rip6-cksum [-eh] [-c ckoff] [-s sendsz] -w "
 	    "[-- scapy ...]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
 	    "    -s sendsz  send packet of given size on socket\n"
-	    "    -w waitpkt wait for packet on socket, timeout in seconds\n"
+	    "    -w         wait for packet on socket, timeout 10 seconds\n"
 	    "    scapy ...  run scapy program after socket setup\n"
 	);
 	exit(1);
@@ -52,7 +52,6 @@ main(int argc, char *argv[])
 	int s, ch, eflag, cflag, sflag, wflag;
 	int ckoff;
 	size_t sendsz;
-	time_t waitpkt;
 	const char *errstr;
 	struct sockaddr_in6 sin6;
 
@@ -60,7 +59,7 @@ main(int argc, char *argv[])
 		err(1, "setvbuf stdout line buffered");
 
 	eflag = cflag = sflag = wflag = 0;
-	while ((ch = getopt(argc, argv, "c:ehs:w:")) != -1) {
+	while ((ch = getopt(argc, argv, "c:ehs:w")) != -1) {
 		switch (ch) {
 		case 'c':
 			ckoff = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
@@ -78,9 +77,6 @@ main(int argc, char *argv[])
 			sflag = 1;
 			break;
 		case 'w':
-			waitpkt = strtonum(optarg, 0, INT_MAX, &errstr);
-			if (errstr != NULL)
-				errx(1, "waitpkt is %s: %s", errstr, optarg);
 			wflag = 1;
 			break;
 		default:
@@ -110,12 +106,11 @@ main(int argc, char *argv[])
 		     sizeof(ckoff)) == -1) {
 			if (!eflag)
 				err(1, "setsockopt ckoff");
-			printf("setsockopt failed %s\n", strerror(errno));
+			printf("setsockopt failed as expected: %s\n",
+			    strerror(errno));
 		} else {
-			if (eflag) {
-				errno = 0;
-				err(1, "setsockopt ckoff");
-			}
+			if (eflag)
+				errx(1, "setsockopt succeeded unexpectedly");
 		}
 	}
 
@@ -144,7 +139,7 @@ main(int argc, char *argv[])
 
 		FD_ZERO(&fds);
 		FD_SET(s, &fds);
-		to.tv_sec = waitpkt;
+		to.tv_sec = 10;
 		to.tv_usec = 0;
 		printf("select socket read\n");
 		n = select(s + 1, &fds, NULL, NULL, &to);

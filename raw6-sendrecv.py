@@ -15,6 +15,8 @@ opts, args = getopt.getopt(sys.argv[1:], "c:hs:")
 
 ip = IPv6(src="::1", dst="::1", nh=255)
 
+ckoff = None
+sendsz = None
 for o, a in opts:
 	if o == "-c":
 		ckoff = int(a)
@@ -39,10 +41,12 @@ req=ip/payload
 # as we are sending from ::1 to ::1 we sniff our own packet as answer
 # send it twice, ignore the first answer, interpret the second
 p=[req,req]
-ans=sr(p, iface="lo0")
+ans=sr(p, iface="lo0", timeout=10)
 print ans
 res=ans[0][1][1]
 res.show()
+
+
 
 cksum = in6_chksum(255, res, res.payload.load)
 print "received checksum is", cksum
