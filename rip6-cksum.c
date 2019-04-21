@@ -164,12 +164,14 @@ main(int argc, char *argv[])
 	}
 
 	if (sflag) {
+		size_t i;
 		char *buf;
 
 		buf = malloc(sendsz);
 		if (buf == NULL)
 			err(1, "malloc sendsz");
-		memset(buf, 0, sendsz);
+		for (i = 0; i < sendsz; i++)
+			buf[i] = i & 0xff;
 		printf("send packet size %zu\n", sendsz);
 		if (send(s, buf, sendsz, 0) == -1)
 			err(1, "send");
