@@ -7,25 +7,29 @@ from struct import pack
 import getopt, sys
 
 def usage():
-	print "raw6-sendrecv [-hi] [-c ckoff] [-s sendsz]"
+	print "raw6-sendrecv [-hi] [-c ckoff] [-r recvsz] [-s sendsz]"
 	print "    -c ckoff   set checksum offset within payload"
 	print "    -h         help, show usage"
 	print "    -i         expect icmp6 error message as response"
+	print "    -r recvsz  expected payload size"
 	print "    -s sendsz  set payload size"
 	exit(1)
 
-opts, args = getopt.getopt(sys.argv[1:], "c:his:")
+opts, args = getopt.getopt(sys.argv[1:], "c:hir:s:")
 
 ip = IPv6(src="::1", dst="::1", nh=255)
 
 ckoff = None
 icmp = False
+recvsz = None
 sendsz = None
 for o, a in opts:
 	if o == "-c":
 		ckoff = int(a)
 	elif o == "-i":
 		icmp = True
+	elif o == "-r":
+		recvsz = int(a)
 	elif o == "-s":
 		sendsz = int(a)
 	else:
@@ -72,3 +76,11 @@ print "received checksum is", cksum
 if ckoff is not None and cksum != 0:
 	print "received invalid checksum", cksum
 	exit(1)
+
+print "received payload length is", len(res.payload.load)
+if recvsz is not None:
+	if len(res.payload.load) != recvsz:
+		print "wrong payload length, expected", recvsz
+		exit(1)
+
+exit(0)
