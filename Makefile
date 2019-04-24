@@ -34,6 +34,13 @@ run-no-cksum:
 	${SUDO} ./rip6-cksum -r 32 -s 8 -w -- \
 	    python2 -u ${.CURDIR}/sendrecv.py -r 8 -s 32
 
+REGRESS_TARGETS +=	run-bad-cksum
+run-bad-cksum:
+	# enable checksum, send packet without checksum, expect icmp
+	@echo "\n======== $@ ========"
+	${SUDO} ./rip6-cksum -c 0 -- \
+	    python2 -u ${.CURDIR}/sendrecv.py -i -r 32 -s 32
+
 REGRESS_TARGETS +=	run-disable-cksum
 run-disable-cksum:
 	# send and receive packet with explicitly disabled checksum
