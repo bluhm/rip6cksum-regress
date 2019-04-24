@@ -48,12 +48,20 @@ if ckoff is not None:
 	payload = payload[:ckoff] + pack("!H", cksum) + payload[ckoff+2:]
 
 req=ip/payload
-# as we are sending from ::1 to ::1 we sniff our own packet as answer
-# send it twice, ignore the first answer, interpret the second
-p=[req,req]
-ans=sr(p, iface="lo0", timeout=10)
+# As we are sending from ::1 to ::1 we sniff our own packet as answer.
+# Add a filter that matches on the expected answer using the payload size.
+if icmp:
+	filter="icmp6"
+	if recvsz is not None:
+		filter += (" and len = %d" % (4 + 40 + 8 + 40 + recvsz))
+else:
+	filter="proto 255"
+	if recvsz is not None:
+		filter += (" and len = %d" % (4 + 40 + recvsz))
+print "filter", filter
+ans=sr(req, iface="lo0", filter=filter, timeout=10)
 print ans
-res=ans[0][1][1]
+res=ans[0][0][1]
 res.show()
 
 print "response protocol next header is", res.nh
