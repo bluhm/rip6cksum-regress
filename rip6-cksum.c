@@ -39,8 +39,8 @@ usage(void)
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
 	    "    -h         help, show usage\n"
-	    "    -r recvsz  expected packet size from socket\n"
-	    "    -s sendsz  send packet of given size on socket\n"
+	    "    -r recvsz  expected payload size from socket\n"
+	    "    -s sendsz  send payload of given size to socket\n"
 	    "    -w         wait for packet on socket, timeout 10 seconds\n"
 	    "    scapy ...  run scapy program after socket setup\n"
 	);
@@ -165,10 +165,10 @@ main(int argc, char *argv[])
 		if (r < 0)
 			err(1, "recv");
 		rsz = r;
-		printf("received packet size %zd\n", rsz);
+		printf("received payload size %zd\n", rsz);
 		if (rflag) {
 			if (rsz != recvsz)
-				err(1, "wrong packet size, expected %zu",					    recvsz);
+				err(1, "wrong payload size, expected %zu",					    recvsz);
 		}
 	}
 
@@ -181,7 +181,7 @@ main(int argc, char *argv[])
 			err(1, "malloc sendsz");
 		for (i = 0; i < sendsz; i++)
 			buf[i] = i & 0xff;
-		printf("send packet size %zu\n", sendsz);
+		printf("send payload of size %zu\n", sendsz);
 		if (send(s, buf, sendsz, 0) == -1)
 			err(1, "send");
 		free(buf);
