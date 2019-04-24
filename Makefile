@@ -125,6 +125,6 @@ run-ckoff-2-long:
 	${SUDO} ./rip6-cksum -c 2 -s 5 -w -- \
 	    python2 -u ${.CURDIR}/raw6-sendrecv.py -c 2 -s 5
 
-REGRESS_TARGETS: ${PROG}
+${REGRESS_TARGETS}: ${PROG}
 
 .include <bsd.regress.mk>
