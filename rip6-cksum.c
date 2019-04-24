@@ -34,11 +34,12 @@ void __dead usage(void);
 void __dead
 usage(void)
 {
-	fprintf(stderr, "rip6-cksum [-eh] [-c ckoff] [-s sendsz] -w "
+	fprintf(stderr, "rip6-cksum [-ehw] [-c ckoff] [-r recvsz] [-s sendsz] "
 	    "[-- scapy ...]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
 	    "    -h         help, show usage\n"
+	    "    -r recvsz  expected packet size from socket\n"
 	    "    -s sendsz  send packet of given size on socket\n"
 	    "    -w         wait for packet on socket, timeout 10 seconds\n"
 	    "    scapy ...  run scapy program after socket setup\n"
@@ -50,17 +51,17 @@ const struct in6_addr loop6 = IN6ADDR_LOOPBACK_INIT;
 int
 main(int argc, char *argv[])
 {
-	int s, ch, eflag, cflag, sflag, wflag;
+	int s, ch, eflag, cflag, rflag, sflag, wflag;
 	int ckoff;
-	size_t sendsz;
+	size_t recvsz, sendsz;
 	const char *errstr;
 	struct sockaddr_in6 sin6;
 
 	if (setvbuf(stdout, NULL, _IOLBF, 0) != 0)
 		err(1, "setvbuf stdout line buffered");
 
-	eflag = cflag = sflag = wflag = 0;
-	while ((ch = getopt(argc, argv, "c:ehs:w")) != -1) {
+	eflag = cflag = rflag = sflag = wflag = 0;
+	while ((ch = getopt(argc, argv, "c:ehr:s:w")) != -1) {
 		switch (ch) {
 		case 'c':
 			ckoff = strtonum(optarg, INT_MIN, INT_MAX, &errstr);
@@ -70,6 +71,12 @@ main(int argc, char *argv[])
 			break;
 		case 'e':
 			eflag = 1;
+			break;
+		case 'r':
+			recvsz = strtonum(optarg, 0, INT_MAX, &errstr);
+			if (errstr != NULL)
+				errx(1, "recvsz is %s: %s", errstr, optarg);
+			rflag = 1;
 			break;
 		case 's':
 			sendsz = strtonum(optarg, 0, INT_MAX, &errstr);
@@ -133,7 +140,8 @@ main(int argc, char *argv[])
 
 	if (wflag) {
 		int n;
-		ssize_t recvsz;
+		ssize_t r;
+		size_t rsz;
 		fd_set fds;
 		struct timeval to;
 		char buf[1<<16];
@@ -144,7 +152,7 @@ main(int argc, char *argv[])
 		to.tv_usec = 0;
 		printf("select socket read\n");
 		n = select(s + 1, &fds, NULL, NULL, &to);
-		switch(n) {
+		switch (n) {
 		case -1:
 			err(1, "select");
 		case 0:
@@ -153,10 +161,15 @@ main(int argc, char *argv[])
 			printf("selected %d\n", n);
 		}
 		printf("recv packet\n");
-		recvsz = recv(s, buf, sizeof(buf), 0);
-		if (recvsz == -1)
+		r = recv(s, buf, sizeof(buf), 0);
+		if (r < 0)
 			err(1, "recv");
-		printf("received packet size %zd\n", recvsz);
+		rsz = r;
+		printf("received packet size %zd\n", rsz);
+		if (rflag) {
+			if (rsz != recvsz)
+				err(1, "wrong packet size, expected %zu",					    recvsz);
+		}
 	}
 
 	if (sflag) {
