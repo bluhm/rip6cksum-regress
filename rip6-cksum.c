@@ -168,7 +168,7 @@ main(int argc, char *argv[])
 		printf("received payload size %zd\n", rsz);
 		if (rflag) {
 			if (rsz != recvsz)
-				err(1, "wrong payload size, expected %zu",					    recvsz);
+				errx(1, "wrong payload size, expected %zu",					    recvsz);
 		}
 	}
 
