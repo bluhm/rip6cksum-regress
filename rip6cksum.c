@@ -34,7 +34,7 @@ void __dead usage(void);
 void __dead
 usage(void)
 {
-	fprintf(stderr, "rip6-cksum [-ehw] [-c ckoff] [-r recvsz] [-s sendsz] "
+	fprintf(stderr, "rip6cksum [-ehw] [-c ckoff] [-r recvsz] [-s sendsz] "
 	    "[-- scapy ...]\n"
 	    "    -c ckoff   set checksum offset within rip header\n"
 	    "    -e         expect error when setting ckoff\n"
