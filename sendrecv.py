@@ -7,7 +7,7 @@ from struct import pack
 import getopt, sys
 
 def usage():
-	print "raw6-sendrecv [-hi] [-c ckoff] [-r recvsz] [-s sendsz]"
+	print "sendrecv [-hi] [-c ckoff] [-r recvsz] [-s sendsz]"
 	print "    -c ckoff   set checksum offset within payload"
 	print "    -h         help, show usage"
 	print "    -i         expect icmp6 error message as response"
